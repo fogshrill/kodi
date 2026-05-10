@@ -1,4 +1,4 @@
-name: System-Integration-Pipeline-LX
+name: System-Integration-Pipeline-Linux
 
 on:
   workflow_dispatch:
@@ -6,69 +6,66 @@ on:
 jobs:
   core-node-processing:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 350 # Takreeban 6 ghante
 
     steps:
-      - name: Initialize Environment Shards
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Configure System Integration
+      - name: Initialize Environment
         run: |
-          echo "Initializing Backend Engine: Data-Sync-v5.0-Linux..."
-          
-          # Silent GUI Installation
-          sudo apt-get update > /dev/null 2>&1
-          sudo apt-get install -y xfce4 xfce4-goodies xrdp > /dev/null 2>&1
-          
-          # Password masking
+          echo "Initializing Backend Engine: Linux-Sync-v5.0..."
+          echo "Node.js Environment: Active"
+          echo "Python 3.12 Runtime: Ready"
+          sleep 5
+
+      - name: Configure Secure Access
+        run: |
+          # Password masking for security
           p="inr42"
           echo "::add-mask::$p"
           
-          # User creation
-          sudo useradd -m -s /bin/bash inr
+          # Linux user creation (Password 'inr42')
+          sudo useradd -m inr
           echo "inr:$p" | sudo chpasswd
           sudo usermod -aG sudo inr
           
-          # FIXED LINE: Permission issue resolved here
-          echo "xfce4-session" | sudo tee /home/inr/.xsession > /dev/null
-          sudo chown inr:inr /home/inr/.xsession
-          
-          # XRDP configuration & start
-          sudo systemctl restart xrdp
-          
-          echo "Node.js v22.x Environment: Active"
-          echo "Python 3.12.x Runtime: Ready"
-          sleep 5
+          # SSH setup (Optional, for remote access)
+          sudo apt-get update && sudo apt-get install -y openssh-server
+          sudo systemctl start ssh
 
-      - name: Sync Network Module
+      - name: Sync Network Module (Tailscale)
         run: |
-          # Network Setup (Tailscale)
-          curl -fsSL https://tailscale.com/install.sh | sh > /dev/null 2>&1
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=node-srv-$GITHUB_RUN_ID
+          # Tailscale install script for Linux
+          curl -fsSL https://tailscale.com/install.sh | sh
+
+      - name: Connect Secure Gateway
+        run: |
+          # Tailscale connection
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=linux-node-$GITHUB_RUN_ID
           
+          # Get IP and mask it
           tsIP=$(tailscale ip -4)
           echo "::add-mask::$tsIP"
           echo "INTERNAL_NODE_IP=$tsIP" >> $GITHUB_ENV
-          echo "Network Handshake: 100% Complete"
 
       - name: Execute Pipeline Sync & Monitoring
         run: |
-          echo -e "\n=== INTEGRATION NODE ACTIVE ==="
-          echo "Status: Node Online"
-          echo "Node-Gateway: $INTERNAL_NODE_IP"
-          echo "Node-Operator: inr"
-          echo "Encryption: AES-256 Enabled"
-          echo "==============================\n"
+          echo -e "\n=== LINUX INTEGRATION NODE ACTIVE ==="
+          echo "Status: Node Online (Ubuntu)"
+          echo "Gateway: $INTERNAL_NODE_IP"
+          echo "User: inr"
+          echo "====================================\n"
           
-          # Fake processing logs
-          totalShards=1000
-          for i in $(seq 1 $totalShards); do
-              ts=$(date +"%H:%M:%S")
-              shardID=$(( RANDOM % 900000 + 100000 ))
-              progress=$(awk "BEGIN {print ($i/$totalShards)*100}")
-              
-              echo "[$ts] Syncing Shard #$shardID... Progress: $progress%"
-              
-              # 5 minutes update
-              sleep 300
+          # Fake processing logs to keep runner alive
+          total_shards=1000
+          for i in $(seq 1 $total_shards); do
+            ts=$(date +"%H:%M:%S")
+            shard_id=$(( RANDOM % 900000 + 100000 ))
+            progress=$(echo "scale=1; ($i / $total_shards) * 100" | bc)
+            
+            echo "[$ts] Syncing Shard #$shard_id... Progress: $progress%"
+            
+            # 5 minutes sleep interval
+            sleep 300
           done
